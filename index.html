@@ -122,15 +122,12 @@
 </head>
 <body>
 <div class="app" id="app">
-    <!-- Экран ввода имени -->
     <div class="name-screen" id="nameScreen">
         <h2>👋 Добро пожаловать!</h2>
         <p style="color: var(--text-secondary);">Введите ваше имя, чтобы начать подготовку к ОГЭ</p>
         <input type="text" id="studentNameInput" placeholder="Ваше имя" autofocus />
         <button id="startBtn">Начать тренировку</button>
     </div>
-
-    <!-- Основное приложение -->
     <div id="mainApp" style="display: none;">
         <header>
             <div class="logo">
@@ -143,7 +140,6 @@
                 <button class="mode-btn" data-mode="exam">📝 Экзамен (10)</button>
             </div>
         </header>
-
         <div class="main-grid">
             <section class="task-card" id="taskCard">
                 <div class="question-display" id="questionDisplay">Задание загружается...</div>
@@ -162,7 +158,6 @@
                 <div id="difficultyLabel" class="mt-16 text-center" style="font-size:0.9rem; color: var(--text-secondary); display:none;"></div>
                 <div id="timeSpent" class="mt-16 text-center" style="font-size:0.9rem; color: var(--text-secondary);"></div>
             </section>
-
             <aside class="stats-panel" id="statsPanel">
                 <h2>📊 Статистика</h2>
                 <div class="stat-grid" id="statGrid">
@@ -181,8 +176,6 @@
                 </div>
             </aside>
         </div>
-
-        <!-- Отчёт по экзамену -->
         <div class="exam-report" id="examReport">
             <h3>📋 Результаты экзамена</h3>
             <div class="score" id="examScore">10/10</div>
@@ -247,87 +240,77 @@
     }
 
     // ============================================================
-    //  ГЕНЕРАТОР ЗАДАНИЙ (десятичные дроби, четыре варианта)
+    //  ГЕНЕРАТОР ЗАДАНИЙ
     // ============================================================
     const QuestionGenerator = {
         generate() {
-            // Типы операций
             const ops = ['add', 'sub', 'mul', 'div'];
             const op = ops[randomInt(0, ops.length - 1)];
-            let a, b, c, result, resultNum, resultDen, display, steps, hint, typeLabel;
-            let isFractionResult = false;
-            let correctFrac = null;
-            let correctDecimal = null;
+            let a, b, c, result, display, steps, hint, typeLabel;
 
             for (let attempt = 0; attempt < 30; attempt++) {
-                // Генерируем десятичные дроби с 1-2 знаками после запятой
-                const aVal = (randomInt(1, 20) + randomInt(0, 9) / 10);
-                const bVal = (randomInt(1, 20) + randomInt(0, 9) / 10);
-                // Для разнообразия иногда используем целые
-                let a1 = randomInt(0, 1) === 0 ? Math.round(aVal) : aVal;
-                let b1 = randomInt(0, 1) === 0 ? Math.round(bVal) : bVal;
-                // Избегаем нуля в делении
-                if (op === 'div' && Math.abs(b1) < 0.01) continue;
+                // Генерируем десятичные дроби с 1-2 знаками
+                let aVal = (randomInt(1, 20) + randomInt(0, 9) / 10);
+                let bVal = (randomInt(1, 20) + randomInt(0, 9) / 10);
+                // Иногда целые
+                if (randomInt(0, 1) === 0) aVal = Math.round(aVal);
+                if (randomInt(0, 1) === 0) bVal = Math.round(bVal);
+                if (op === 'div' && Math.abs(bVal) < 0.01) continue;
 
                 let res;
                 let opSymbol;
                 switch (op) {
                     case 'add':
-                        res = a1 + b1;
+                        res = aVal + bVal;
                         opSymbol = '+';
-                        display = `Вычислите: ${a1} ${opSymbol} ${b1}`;
-                        steps = [`Складываем: ${a1} + ${b1} = ${formatNumber(res)}`];
+                        display = `Вычислите: ${aVal} ${opSymbol} ${bVal}`;
+                        steps = [`Складываем: ${aVal} + ${bVal} = ${formatNumber(res)}`];
                         hint = 'Сложите столбиком, выровняв запятые.';
                         typeLabel = 'Сложение';
                         break;
                     case 'sub':
-                        res = a1 - b1;
+                        res = aVal - bVal;
                         opSymbol = '-';
-                        display = `Вычислите: ${a1} ${opSymbol} ${b1}`;
-                        steps = [`Вычитаем: ${a1} - ${b1} = ${formatNumber(res)}`];
+                        display = `Вычислите: ${aVal} ${opSymbol} ${bVal}`;
+                        steps = [`Вычитаем: ${aVal} - ${bVal} = ${formatNumber(res)}`];
                         hint = 'Вычтите столбиком, выровняв запятые.';
                         typeLabel = 'Вычитание';
                         break;
                     case 'mul':
-                        res = a1 * b1;
+                        res = aVal * bVal;
                         opSymbol = '·';
-                        display = `Вычислите: ${a1} ${opSymbol} ${b1}`;
-                        steps = [`Умножаем: ${a1} · ${b1} = ${formatNumber(res)}`];
+                        display = `Вычислите: ${aVal} ${opSymbol} ${bVal}`;
+                        steps = [`Умножаем: ${aVal} · ${bVal} = ${formatNumber(res)}`];
                         hint = 'Умножьте как целые числа, затем поставьте запятую.';
                         typeLabel = 'Умножение';
                         break;
                     case 'div':
-                        if (Math.abs(b1) < 0.01) continue;
-                        res = a1 / b1;
+                        if (Math.abs(bVal) < 0.01) continue;
+                        res = aVal / bVal;
                         opSymbol = '÷';
-                        display = `Вычислите: ${a1} ${opSymbol} ${b1}`;
+                        display = `Вычислите: ${aVal} ${opSymbol} ${bVal}`;
                         hint = 'Разделите столбиком.';
                         typeLabel = 'Деление';
                         break;
                     default: continue;
                 }
 
-                // Определяем, является ли результат конечной десятичной
-                // Для этого представим res как дробь
-                let num, den;
-                // Преобразуем res в дробь с помощью умножения на 100 (для двух знаков)
-                const precision = 100;
-                num = Math.round(res * precision);
-                den = precision;
+                // Определяем формат ответа
+                const precision = 1000;
+                let num = Math.round(res * precision);
+                let den = precision;
                 let simp = simplify(num, den);
                 const isTerm = isTerminating(simp.num, simp.den);
 
                 if (isTerm) {
                     // конечная десятичная
-                    correctDecimal = res;
-                    isFractionResult = false;
-                    // Генерируем варианты десятичные
-                    const options = this.generateDecimalOptions(res);
+                    const correct = Math.round(res * 100) / 100; // ограничим 2 знаками
+                    const options = this.generateDecimalOptions(correct);
                     if (!options || options.length < 4) continue;
                     shuffle(options);
                     return {
                         display: display,
-                        correctAnswer: res,
+                        correctAnswer: correct,
                         answerFormat: 'decimal',
                         options: options,
                         type: typeLabel,
@@ -336,16 +319,14 @@
                         isFraction: false
                     };
                 } else {
-                    // бесконечная десятичная → обыкновенная дробь
-                    correctFrac = simp;
-                    isFractionResult = true;
-                    // Генерируем варианты дробные
-                    const options = this.generateFractionOptions(simp);
+                    // бесконечная → дробь
+                    const correctFrac = simp;
+                    const options = this.generateFractionOptions(correctFrac);
                     if (!options || options.length < 4) continue;
                     shuffle(options);
                     return {
                         display: display,
-                        correctAnswer: simp,
+                        correctAnswer: correctFrac,
                         answerFormat: 'fraction',
                         options: options,
                         type: typeLabel,
@@ -356,10 +337,6 @@
                 }
             }
             // fallback
-            return this.fallback();
-        },
-
-        fallback() {
             return {
                 display: 'Вычислите: 2.5 + 3.75',
                 correctAnswer: 6.25,
@@ -377,13 +354,11 @@
             const offsets = [0.25, -0.25, 0.5, -0.5, 0.75, -0.75, 1, -1, 0.1, -0.1, 0.2, -0.2];
             for (let off of offsets) {
                 let val = correct + off;
-                // Округляем до двух знаков
                 val = Math.round(val * 100) / 100;
                 if (val !== correct && !candidates.some(c => Math.abs(c - val) < 0.001)) {
                     candidates.push(val);
                 }
             }
-            // Если не хватает, добавим случайные
             while (candidates.length < 3) {
                 let val = correct + (randomInt(-10, 10) / 10);
                 val = Math.round(val * 100) / 100;
@@ -399,7 +374,6 @@
 
         generateFractionOptions(correct) {
             const candidates = [];
-            // Варианты: смещение числителя/знаменателя
             const shifts = [
                 { dn: 1, dd: 0 }, { dn: -1, dd: 0 }, { dn: 0, dd: 1 }, { dn: 0, dd: -1 },
                 { dn: 1, dd: 1 }, { dn: -1, dd: -1 }, { dn: 2, dd: 0 }, { dn: -2, dd: 0 }
@@ -409,14 +383,11 @@
                 let newDen = correct.den + s.dd;
                 if (newDen <= 0 || newNum === 0) continue;
                 let simp = simplify(newNum, newDen);
-                // Не должно совпадать с правильным
                 if (simp.num === correct.num && simp.den === correct.den) continue;
-                // Исключим дубли
                 if (!candidates.some(c => c.num === simp.num && c.den === simp.den)) {
                     candidates.push(simp);
                 }
             }
-            // Если недостаточно, добавим случайные дроби
             while (candidates.length < 3) {
                 let n = randomInt(1, 10);
                 let d = randomInt(2, 10);
@@ -795,7 +766,6 @@
                 document.getElementById('feedbackText').textContent = '';
                 document.getElementById('stepsContainer').innerHTML = '';
                 document.getElementById('hintContainer').style.display = 'none';
-                // Обновить варианты
                 const container = document.getElementById('optionsContainer');
                 container.innerHTML = '';
                 const letters = ['A', 'B', 'C', 'D'];
@@ -864,7 +834,6 @@
             document.getElementById('feedbackText').textContent = '';
             document.getElementById('stepsContainer').innerHTML = '';
             document.getElementById('hintContainer').style.display = 'none';
-            // Отрисовка вариантов
             const container = document.getElementById('optionsContainer');
             container.innerHTML = '';
             const letters = ['A', 'B', 'C', 'D'];
