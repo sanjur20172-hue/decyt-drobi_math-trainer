@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
     <style>
-        /* ===== Глобальные стили ===== */
+        /* ===== Глобальные стили (без изменений) ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg: #f5f7fa;
@@ -50,7 +50,6 @@
         .input-area button.secondary:hover:not(:disabled) { background: #e2e8f0; }
         .input-area button:disabled { opacity: 0.5; pointer-events: none; }
 
-        /* Стили для вариантов ответов (когда дробь) */
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
         @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
         .option-btn { padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; background: #fafbfc; cursor: pointer; font-size: 1rem; font-weight: 500; text-align: left; transition: var(--transition); display: flex; align-items: center; gap: 10px; }
@@ -258,53 +257,28 @@
     // ============================================================
     const QuestionGenerator = {
         generate() {
-            // Типы операций
             const ops = ['add', 'sub', 'mul', 'div', 'mixed'];
             const op = ops[randomInt(0, ops.length - 1)];
             let a, b, c, d, result, resultNum, resultDen, display, steps, hint, typeLabel;
 
-            // Пытаемся сгенерировать подходящее задание
             for (let attempt = 0; attempt < 30; attempt++) {
                 switch (op) {
                     case 'add': {
-                        // a + b, где a,b — десятичные с конечным ответом или дробным
-                        // Сделаем так, чтобы результат был либо целым/конечным, либо дробным
-                        // Случайно выберем формат: 0 - десятичные, 1 - дробные (дающие дробь)
                         const format = randomInt(0, 1);
                         if (format === 0) {
-                            // десятичные с конечным ответом
                             let aVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
                             let bVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
-                            // Чтобы сумма была конечной, просто берём десятичные
                             result = aVal + bVal;
                             display = `Вычислите: ${aVal} + ${bVal}`;
                             steps = [`Складываем: ${aVal} + ${bVal} = ${formatNumber(result)}`];
                             hint = 'Сложите числа столбиком, выровняв запятые.';
                             typeLabel = 'Сложение';
-                            // Проверяем конечность результата (всегда конечна для десятичных)
                             return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
                         } else {
-                            // десятичные, дающие дробь (например, 0.5 + 0.333... но 0.333 не представимо в десятичной конечной)
-                            // Лучше взять дроби: 1/2 + 1/3 = 5/6 (дробь)
-                            // Используем обыкновенные дроби, но представляем их как десятичные в условии?
-                            // Условие: десятичные дроби. Можно взять 0.5 и 0.333... но 0.333... не конечная.
-                            // Возьмём 0.5 и 0.75 => 1.25 (конечная) — не подходит.
-                            // Возьмём 0.5 и 0.25 => 0.75 (конечная).
-                            // Чтобы получить дробь, нужно чтобы знаменатели после сокращения содержали не только 2 и 5.
-                            // Используем десятичные с повторяющимися? Но это сложно.
-                            // Проще: пусть в условии будут обыкновенные дроби, но мы можем написать "0.5 + 0.333..."? Нет.
-                            // Так как тема "десятичные дроби", мы можем использовать десятичные, которые дают дробь при делении.
-                            // Например, 0.5 / 0.75 = 2/3 — это деление.
-                            // Для сложения: 0.5 + 0.25 = 0.75 (конечная). 0.5 + 0.2 = 0.7 (конечная).
-                            // Чтобы получить дробь, нужно чтобы знаменатели были 3, 6, 7 и т.д.
-                            // Тогда используем десятичные, которые не являются конечными: 0.333... но мы не можем представить.
-                            // Поэтому для дробных ответов будем использовать деление и умножение, а для сложения/вычитания — только конечные.
-                            // Упростим: оставим только конечные для add/sub.
                             continue;
                         }
                     }
                     case 'sub': {
-                        // аналогично add
                         let aVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
                         let bVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
                         if (aVal < bVal) { let tmp = aVal; aVal = bVal; bVal = tmp; }
@@ -316,13 +290,9 @@
                         return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
                     }
                     case 'mul': {
-                        // Умножение может дать дробь (например, 0.5 * 0.75 = 0.375 — конечная, но 0.5 * 0.333... не подходит)
-                        // Для дроби: 0.5 / 0.75 = 2/3 (деление)
-                        // Поэтому умножение сделаем только с конечными
                         let aVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
                         let bVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
                         result = aVal * bVal;
-                        // Проверяем конечность (она всегда конечна, т.к. десятичные)
                         display = `Вычислите: ${aVal} · ${bVal}`;
                         steps = [`Умножаем: ${aVal} · ${bVal} = ${formatNumber(result)}`];
                         hint = 'Умножьте как целые числа, затем поставьте запятую.';
@@ -330,12 +300,8 @@
                         return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
                     }
                     case 'div': {
-                        // Деление: может дать конечную или дробь
-                        // Выберем a и b так, чтобы результат был либо конечным, либо дробным
-                        // Случайно выберем формат
                         const format = randomInt(0, 1);
                         if (format === 0) {
-                            // конечный результат
                             let bVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
                             let ratio = randomInt(1, 5);
                             let aVal = bVal * ratio;
@@ -346,26 +312,18 @@
                             typeLabel = 'Деление';
                             return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
                         } else {
-                            // дробный результат (бесконечная десятичная)
-                            // Например, 0.5 / 0.75 = 2/3
-                            // Выберем числитель и знаменатель для дроби, затем преобразуем в десятичные
                             let num = randomInt(1, 10);
                             let den = randomInt(2, 10);
-                            if (num % den === 0) continue; // целое
-                            // Сократим
+                            if (num % den === 0) continue;
                             let simp = simplify(num, den);
-                            // Проверим, что дробь не даёт конечную десятичную
                             if (isTerminating(simp.num, simp.den)) continue;
-                            // Теперь создадим десятичные числа: a = num/den * k, b = k (чтобы a/b = num/den)
                             let k = randomInt(1, 5);
                             let aVal = simp.num * k / simp.den;
                             let bVal = k;
-                            // Округлим до 2 знаков для красоты
                             aVal = Math.round(aVal * 100) / 100;
                             bVal = Math.round(bVal * 100) / 100;
                             if (aVal === 0 || bVal === 0) continue;
-                            result = aVal / bVal; // это будет равно simp.num/simp.den
-                            // Проверим, что result действительно дробный (не целый)
+                            result = aVal / bVal;
                             if (Number.isInteger(result)) continue;
                             display = `Вычислите: ${aVal} ÷ ${bVal}`;
                             steps = [
@@ -376,15 +334,11 @@
                             ];
                             hint = 'Разделите десятичные дроби, затем сократите дробь.';
                             typeLabel = 'Деление (дробный ответ)';
-                            // Создаём объект с дробным ответом
                             const correctFrac = { num: simp.num, den: simp.den };
                             return this.buildFractionQuestion(display, correctFrac, typeLabel, steps, hint);
                         }
                     }
                     case 'mixed': {
-                        // Смешанное выражение: (a + b) * c и т.п.
-                        // Может дать дробь, если есть деление
-                        // Упростим: сделаем только с конечными
                         let aVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
                         let bVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
                         let cVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
@@ -397,7 +351,6 @@
                     }
                 }
             }
-            // fallback
             return this.buildQuestion('Вычислите: 2.5 + 3.75', 6.25, 'decimal', 'Сложение', ['2.5 + 3.75 = 6.25'], 'Сложите столбиком.');
         },
 
@@ -405,7 +358,7 @@
             return {
                 display: display,
                 correctAnswer: correct,
-                answerFormat: format, // 'decimal' или 'fraction'
+                answerFormat: format,
                 type: type,
                 steps: steps,
                 hint: hint,
@@ -414,7 +367,6 @@
         },
 
         buildFractionQuestion(display, correctFrac, type, steps, hint) {
-            // Генерируем 4 варианта дробей
             const options = this.generateFractionOptions(correctFrac);
             return {
                 display: display,
@@ -430,7 +382,6 @@
 
         generateFractionOptions(correct) {
             const candidates = [];
-            // Варианты: смещение числителя/знаменателя
             const shifts = [
                 { dn: 1, dd: 0 }, { dn: -1, dd: 0 }, { dn: 0, dd: 1 }, { dn: 0, dd: -1 },
                 { dn: 1, dd: 1 }, { dn: -1, dd: -1 }
@@ -440,14 +391,11 @@
                 let newDen = correct.den + s.dd;
                 if (newDen <= 0 || newNum === 0) continue;
                 let simp = simplify(newNum, newDen);
-                // Не должно совпадать с правильным
                 if (simp.num === correct.num && simp.den === correct.den) continue;
-                // Исключим дубли
                 if (!candidates.some(c => c.num === simp.num && c.den === simp.den)) {
                     candidates.push(simp);
                 }
             }
-            // Если недостаточно, добавим случайные
             while (candidates.length < 3) {
                 let n = randomInt(1, 10);
                 let d = randomInt(2, 10);
@@ -457,9 +405,7 @@
                     candidates.push(s);
                 }
             }
-            // Перемешиваем
             shuffle(candidates);
-            // Берем 3 и добавляем правильный
             let options = candidates.slice(0, 3);
             options.push(correct);
             shuffle(options);
@@ -630,7 +576,6 @@
         },
 
         bindUI() {
-            // Кнопки для ввода
             document.getElementById('checkBtn').addEventListener('click', () => this.checkInputAnswer());
             document.getElementById('answerInput').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -639,7 +584,6 @@
                     else this.nextQuestion();
                 }
             });
-            // Кнопки для вариантов
             document.getElementById('checkOptionsBtn').addEventListener('click', () => this.checkOptionsAnswer());
             document.getElementById('nextBtn').addEventListener('click', () => this.nextQuestion());
             document.getElementById('hintBtn').addEventListener('click', () => this.showHint());
@@ -689,16 +633,19 @@
             document.getElementById('hintContainer').style.display = 'none';
             document.getElementById('nextBtn').style.display = 'none';
 
+            // Сброс состояния поля ввода — важное исправление!
+            document.getElementById('answerInput').disabled = false;
+            document.getElementById('answerInput').value = '';
+            document.getElementById('checkBtn').disabled = false;
+            document.getElementById('checkOptionsBtn').disabled = false;
+
             if (this.currentQuestion.answerFormat === 'decimal') {
                 document.getElementById('inputBlock').style.display = 'flex';
                 document.getElementById('optionsBlock').style.display = 'none';
-                document.getElementById('answerInput').value = '';
                 document.getElementById('answerInput').focus();
-                document.getElementById('checkBtn').disabled = false;
             } else {
                 document.getElementById('inputBlock').style.display = 'none';
                 document.getElementById('optionsBlock').style.display = 'block';
-                // Отрисовка вариантов
                 const container = document.getElementById('optionsContainer');
                 container.innerHTML = '';
                 const letters = ['A', 'B', 'C', 'D'];
@@ -716,10 +663,9 @@
                     btn.addEventListener('click', () => this.selectOption(idx));
                     container.appendChild(btn);
                 });
-                document.querySelectorAll('.option-btn').forEach(btn => {
+                document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
                     btn.classList.remove('selected', 'correct', 'wrong', 'reveal-correct', 'disabled');
                 });
-                document.getElementById('checkOptionsBtn').disabled = false;
             }
 
             this.questionStartTime = Date.now();
@@ -855,7 +801,7 @@
                 }
                 this.currentQuestion = this.examQuestions[this.examIndex];
                 this.displayQuestion(this.currentQuestion);
-                // сброс
+                // Сброс состояния для следующего вопроса
                 this.isAnswered = false;
                 this.selectedOptionIndex = null;
                 document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
@@ -864,19 +810,19 @@
                 document.getElementById('hintContainer').style.display = 'none';
                 document.getElementById('nextBtn').style.display = 'none';
                 document.getElementById('answerInput').disabled = false;
+                document.getElementById('answerInput').value = '';
                 document.getElementById('checkBtn').disabled = false;
                 document.getElementById('checkOptionsBtn').disabled = false;
                 document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
                     btn.classList.remove('selected', 'correct', 'wrong', 'reveal-correct', 'disabled');
                 });
-                document.getElementById('answerInput').value = '';
                 const prog = document.getElementById('examProgress');
                 prog.textContent = `Вопрос ${this.examIndex + 1} из ${this.examQuestions.length}`;
                 document.getElementById('timeSpent').textContent = '';
                 this.questionStartTime = Date.now();
                 document.getElementById('taskCard').classList.remove('fade-in');
                 setTimeout(() => document.getElementById('taskCard').classList.add('fade-in'), 10);
-                // Показать нужный блок
+
                 if (this.currentQuestion.answerFormat === 'decimal') {
                     document.getElementById('inputBlock').style.display = 'flex';
                     document.getElementById('optionsBlock').style.display = 'none';
@@ -884,7 +830,6 @@
                 } else {
                     document.getElementById('inputBlock').style.display = 'none';
                     document.getElementById('optionsBlock').style.display = 'block';
-                    // перерисовать варианты
                     const container = document.getElementById('optionsContainer');
                     container.innerHTML = '';
                     const letters = ['A', 'B', 'C', 'D'];
@@ -937,9 +882,9 @@
             document.getElementById('hintContainer').style.display = 'none';
             document.getElementById('nextBtn').style.display = 'none';
             document.getElementById('answerInput').disabled = false;
+            document.getElementById('answerInput').value = '';
             document.getElementById('checkBtn').disabled = false;
             document.getElementById('checkOptionsBtn').disabled = false;
-            document.getElementById('answerInput').value = '';
             document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
                 btn.classList.remove('selected', 'correct', 'wrong', 'reveal-correct', 'disabled');
             });
@@ -950,7 +895,7 @@
             label.textContent = 'Уровень ОГЭ';
             document.getElementById('timeSpent').textContent = '';
             this.questionStartTime = Date.now();
-            // Показать нужный блок
+
             if (this.currentQuestion.answerFormat === 'decimal') {
                 document.getElementById('inputBlock').style.display = 'flex';
                 document.getElementById('optionsBlock').style.display = 'none';
