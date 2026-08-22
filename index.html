@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
     <style>
-        /* ===== Глобальные стили ===== */
+        /* ===== Глобальные стили (без изменений) ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg: #f5f7fa;
@@ -246,19 +246,21 @@
         generate() {
             const ops = ['add', 'sub', 'mul', 'div'];
             const op = ops[randomInt(0, ops.length - 1)];
-            let a, b, c, result, display, steps, hint, typeLabel;
+            let display, steps, hint, typeLabel;
 
+            // Для деления всегда возвращаем дробь
+            if (op === 'div') {
+                return this.generateDivision();
+            }
+
+            // Для остальных операций
             for (let attempt = 0; attempt < 30; attempt++) {
-                // Генерируем десятичные дроби с 1-2 знаками
                 let aVal = (randomInt(1, 20) + randomInt(0, 9) / 10);
                 let bVal = (randomInt(1, 20) + randomInt(0, 9) / 10);
-                // Иногда целые
                 if (randomInt(0, 1) === 0) aVal = Math.round(aVal);
                 if (randomInt(0, 1) === 0) bVal = Math.round(bVal);
-                if (op === 'div' && Math.abs(bVal) < 0.01) continue;
 
-                let res;
-                let opSymbol;
+                let res, opSymbol;
                 switch (op) {
                     case 'add':
                         res = aVal + bVal;
@@ -284,14 +286,6 @@
                         hint = 'Умножьте как целые числа, затем поставьте запятую.';
                         typeLabel = 'Умножение';
                         break;
-                    case 'div':
-                        if (Math.abs(bVal) < 0.01) continue;
-                        res = aVal / bVal;
-                        opSymbol = '÷';
-                        display = `Вычислите: ${aVal} ${opSymbol} ${bVal}`;
-                        hint = 'Разделите столбиком.';
-                        typeLabel = 'Деление';
-                        break;
                     default: continue;
                 }
 
@@ -304,7 +298,7 @@
 
                 if (isTerm) {
                     // конечная десятичная
-                    const correct = Math.round(res * 100) / 100; // ограничим 2 знаками
+                    const correct = Math.round(res * 100) / 100;
                     const options = this.generateDecimalOptions(correct);
                     if (!options || options.length < 4) continue;
                     shuffle(options);
@@ -346,6 +340,59 @@
                 steps: ['2.5 + 3.75 = 6.25'],
                 hint: 'Сложите столбиком.',
                 isFraction: false
+            };
+        },
+
+        // Специальный метод для деления — всегда возвращает дробь
+        generateDivision() {
+            // Генерируем два числа a и b (1..20), взаимно простых, b не равно 1
+            let a, b;
+            let attempts = 0;
+            do {
+                a = randomInt(1, 20);
+                b = randomInt(1, 20);
+                attempts++;
+                if (attempts > 50) { a = 2; b = 3; break; }
+            } while (gcd(a, b) !== 1 || b === 1 || a === b);
+            // Убедимся, что дробь не даёт конечную десятичную (для красоты, но можно и без)
+            // Если b содержит только 2 и 5, то дробь будет конечной, но мы всё равно представим её как дробь.
+            // Поэтому не проверяем.
+
+            // Формируем десятичные дроби: 0.a и 0.b (если a или b двузначные, то 0.ab)
+            // Для простоты используем числа от 1 до 9, чтобы получить 0.a и 0.b.
+            // Но если a или b > 9, то нужно использовать 0.0a? Нет, проще ограничить до 9.
+            // Перегенерируем, если a>9 или b>9
+            while (a > 9 || b > 9) {
+                a = randomInt(1, 9);
+                b = randomInt(1, 9);
+                if (gcd(a, b) !== 1 || b === 1 || a === b) continue;
+                break;
+            }
+            // Теперь десятичные дроби: a/10 и b/10
+            let dec1 = a / 10;
+            let dec2 = b / 10;
+            // Убедимся, что dec2 != 0
+            if (dec2 === 0) dec2 = 1;
+
+            let display = `Вычислите: ${dec1} ÷ ${dec2}`;
+            let steps = [`Делим: ${dec1} ÷ ${dec2} = ${a}/${b}`];
+            let hint = 'Разделите десятичные дроби, затем сократите дробь.';
+            let typeLabel = 'Деление';
+
+            const correctFrac = { num: a, den: b };
+            // Генерируем варианты дробей
+            const options = this.generateFractionOptions(correctFrac);
+            shuffle(options);
+
+            return {
+                display: display,
+                correctAnswer: correctFrac,
+                answerFormat: 'fraction',
+                options: options,
+                type: typeLabel,
+                steps: steps,
+                hint: hint,
+                isFraction: true
             };
         },
 
@@ -515,7 +562,7 @@
     };
 
     // ============================================================
-    //  ОСНОВНОЙ КОНТРОЛЛЕР
+    //  ОСНОВНОЙ КОНТРОЛЛЕР (без изменений)
     // ============================================================
     const App = {
         mode: 'train',
