@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
     <style>
-        /* ===== Глобальные стили (без изменений) ===== */
+        /* ===== Глобальные стили ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg: #f5f7fa;
@@ -49,21 +49,6 @@
         .input-area button.secondary { background: #eef2f6; color: var(--text-primary); box-shadow: none; }
         .input-area button.secondary:hover:not(:disabled) { background: #e2e8f0; }
         .input-area button:disabled { opacity: 0.5; pointer-events: none; }
-
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
-        @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
-        .option-btn { padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; background: #fafbfc; cursor: pointer; font-size: 1rem; font-weight: 500; text-align: left; transition: var(--transition); display: flex; align-items: center; gap: 10px; }
-        .option-btn:hover:not(.disabled) { border-color: var(--accent); background: #f0f4ff; }
-        .option-btn .letter { display: inline-block; width: 28px; height: 28px; border-radius: 50%; background: var(--bg); text-align: center; line-height: 28px; font-weight: 700; color: var(--text-secondary); flex-shrink: 0; }
-        .option-btn.selected { border-color: var(--accent); background: #e8edfd; }
-        .option-btn.correct { border-color: var(--green); background: #eafaf1; }
-        .option-btn.correct .letter { background: var(--green); color: #fff; }
-        .option-btn.wrong { border-color: var(--red); background: #fdedec; }
-        .option-btn.wrong .letter { background: var(--red); color: #fff; }
-        .option-btn.disabled { cursor: default; opacity: 0.9; }
-        .option-btn.reveal-correct { border-color: var(--green); background: #eafaf1; }
-        .option-btn.reveal-correct .letter { background: var(--green); color: #fff; }
-
         .feedback { margin-top: 16px; padding: 16px 20px; border-radius: 12px; font-weight: 500; display: none; }
         .feedback.show { display: block; }
         .feedback.correct { background: #eafaf1; color: var(--green); border-left: 5px solid var(--green); }
@@ -119,7 +104,6 @@
         @media (max-width: 600px) {
             .exam-report table { font-size: 0.75rem; min-width: 500px; }
             .question-display { font-size: 1.2rem; }
-            .option-btn { font-size: 0.9rem; padding: 12px 14px; }
             header { flex-direction: column; align-items: stretch; gap: 12px; }
             .mode-switcher { justify-content: center; }
         }
@@ -148,19 +132,11 @@
         <div class="main-grid">
             <section class="task-card" id="taskCard">
                 <div class="question-display" id="questionDisplay">Задание загружается...</div>
-                <!-- Блок для ввода (десятичные ответы) -->
-                <div id="inputBlock" class="input-area">
+                <div class="input-area">
                     <input type="text" id="answerInput" placeholder="Введите ответ (число)" autofocus />
                     <button id="checkBtn">✅ Проверить</button>
+                    <button id="nextBtn" class="secondary" style="display: none; margin-top: 12px;">➡️ Следующее</button>
                 </div>
-                <!-- Блок для вариантов (дробные ответы) -->
-                <div id="optionsBlock" style="display: none;">
-                    <div class="options-grid" id="optionsContainer"></div>
-                    <div class="input-area">
-                        <button id="checkOptionsBtn">✅ Проверить</button>
-                    </div>
-                </div>
-                <button id="nextBtn" class="secondary" style="display: none; margin-top: 12px;">➡️ Следующее</button>
                 <div class="feedback" id="feedback">
                     <div id="feedbackText"></div>
                     <div class="steps" id="stepsContainer"></div>
@@ -220,63 +196,32 @@
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    function gcd(a, b) {
-        a = Math.abs(a); b = Math.abs(b);
-        while (b) { [a, b] = [b, a % b]; }
-        return a;
-    }
-
-    function simplify(num, den) {
-        if (den < 0) { num = -num; den = -den; }
-        if (num === 0) return { num: 0, den: 1 };
-        const g = gcd(Math.abs(num), den);
-        return { num: num / g, den: den / g };
-    }
-
-    function isTerminating(num, den) {
-        if (den === 0) return false;
-        let d = den;
-        while (d % 2 === 0) d /= 2;
-        while (d % 5 === 0) d /= 5;
-        return d === 1;
-    }
-
-    function fractionToString(num, den) {
-        if (den === 1) return num.toString();
-        if (num === 0) return "0";
-        return num + "/" + den;
-    }
-
     function formatNumber(val) {
         if (Number.isInteger(val)) return val.toString();
         return val.toFixed(5).replace(/\.?0+$/, '');
     }
 
     // ============================================================
-    //  ГЕНЕРАТОР ЗАДАНИЙ
+    //  ГЕНЕРАТОР ЗАДАНИЙ (без деления)
     // ============================================================
     const QuestionGenerator = {
         generate() {
-            const ops = ['add', 'sub', 'mul', 'div', 'mixed'];
+            // Типы: сложение, вычитание, умножение, смешанное (сумма и умножение)
+            const ops = ['add', 'sub', 'mul', 'mixed'];
             const op = ops[randomInt(0, ops.length - 1)];
-            let a, b, c, d, result, resultNum, resultDen, display, steps, hint, typeLabel;
+            let a, b, c, result, display, steps, hint, typeLabel;
 
             for (let attempt = 0; attempt < 30; attempt++) {
                 switch (op) {
                     case 'add': {
-                        const format = randomInt(0, 1);
-                        if (format === 0) {
-                            let aVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
-                            let bVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
-                            result = aVal + bVal;
-                            display = `Вычислите: ${aVal} + ${bVal}`;
-                            steps = [`Складываем: ${aVal} + ${bVal} = ${formatNumber(result)}`];
-                            hint = 'Сложите числа столбиком, выровняв запятые.';
-                            typeLabel = 'Сложение';
-                            return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
-                        } else {
-                            continue;
-                        }
+                        let aVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
+                        let bVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
+                        result = aVal + bVal;
+                        display = `Вычислите: ${aVal} + ${bVal}`;
+                        steps = [`Складываем: ${aVal} + ${bVal} = ${formatNumber(result)}`];
+                        hint = 'Сложите числа столбиком, выровняв запятые.';
+                        typeLabel = 'Сложение';
+                        return this.buildQuestion(display, result, typeLabel, steps, hint);
                     }
                     case 'sub': {
                         let aVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
@@ -287,7 +232,7 @@
                         steps = [`Вычитаем: ${aVal} - ${bVal} = ${formatNumber(result)}`];
                         hint = 'Вычтите столбиком, выровняв запятые.';
                         typeLabel = 'Вычитание';
-                        return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
+                        return this.buildQuestion(display, result, typeLabel, steps, hint);
                     }
                     case 'mul': {
                         let aVal = (randomInt(1, 10) + randomInt(0, 9) / 10);
@@ -297,119 +242,37 @@
                         steps = [`Умножаем: ${aVal} · ${bVal} = ${formatNumber(result)}`];
                         hint = 'Умножьте как целые числа, затем поставьте запятую.';
                         typeLabel = 'Умножение';
-                        return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
-                    }
-                    case 'div': {
-                        const format = randomInt(0, 1);
-                        if (format === 0) {
-                            let bVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
-                            let ratio = randomInt(1, 5);
-                            let aVal = bVal * ratio;
-                            result = aVal / bVal;
-                            display = `Вычислите: ${aVal} ÷ ${bVal}`;
-                            steps = [`Делим: ${aVal} ÷ ${bVal} = ${formatNumber(result)}`];
-                            hint = 'Разделите столбиком.';
-                            typeLabel = 'Деление';
-                            return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
-                        } else {
-                            let num = randomInt(1, 10);
-                            let den = randomInt(2, 10);
-                            if (num % den === 0) continue;
-                            let simp = simplify(num, den);
-                            if (isTerminating(simp.num, simp.den)) continue;
-                            let k = randomInt(1, 5);
-                            let aVal = simp.num * k / simp.den;
-                            let bVal = k;
-                            aVal = Math.round(aVal * 100) / 100;
-                            bVal = Math.round(bVal * 100) / 100;
-                            if (aVal === 0 || bVal === 0) continue;
-                            result = aVal / bVal;
-                            if (Number.isInteger(result)) continue;
-                            display = `Вычислите: ${aVal} ÷ ${bVal}`;
-                            steps = [
-                                `Делим: ${aVal} ÷ ${bVal}`,
-                                `Переносим запятую: ${aVal*100} ÷ ${bVal*100}`,
-                                `Сокращаем: ${simp.num}/${simp.den}`,
-                                `Ответ: ${fractionToString(simp.num, simp.den)} ≈ ${formatNumber(result)}`
-                            ];
-                            hint = 'Разделите десятичные дроби, затем сократите дробь.';
-                            typeLabel = 'Деление (дробный ответ)';
-                            const correctFrac = { num: simp.num, den: simp.den };
-                            return this.buildFractionQuestion(display, correctFrac, typeLabel, steps, hint);
-                        }
+                        return this.buildQuestion(display, result, typeLabel, steps, hint);
                     }
                     case 'mixed': {
+                        // (a + b) * c
                         let aVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
                         let bVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
                         let cVal = (randomInt(1, 5) + randomInt(0, 9) / 10);
                         result = (aVal + bVal) * cVal;
                         display = `Вычислите: (${aVal} + ${bVal}) · ${cVal}`;
-                        steps = [`Сначала сложение: ${aVal} + ${bVal} = ${formatNumber(aVal+bVal)}`, `Умножение: ${formatNumber(aVal+bVal)} · ${cVal} = ${formatNumber(result)}`];
+                        steps = [
+                            `Сначала сложение: ${aVal} + ${bVal} = ${formatNumber(aVal+bVal)}`,
+                            `Умножение: ${formatNumber(aVal+bVal)} · ${cVal} = ${formatNumber(result)}`
+                        ];
                         hint = 'Выполните действия по порядку.';
                         typeLabel = 'Смешанное';
-                        return this.buildQuestion(display, result, 'decimal', typeLabel, steps, hint);
+                        return this.buildQuestion(display, result, typeLabel, steps, hint);
                     }
                 }
             }
-            return this.buildQuestion('Вычислите: 2.5 + 3.75', 6.25, 'decimal', 'Сложение', ['2.5 + 3.75 = 6.25'], 'Сложите столбиком.');
+            // fallback
+            return this.buildQuestion('Вычислите: 2.5 + 3.75', 6.25, 'Сложение', ['2.5 + 3.75 = 6.25'], 'Сложите столбиком.');
         },
 
-        buildQuestion(display, correct, format, type, steps, hint) {
+        buildQuestion(display, correct, type, steps, hint) {
             return {
                 display: display,
                 correctAnswer: correct,
-                answerFormat: format,
                 type: type,
                 steps: steps,
-                hint: hint,
-                isFraction: false
+                hint: hint
             };
-        },
-
-        buildFractionQuestion(display, correctFrac, type, steps, hint) {
-            const options = this.generateFractionOptions(correctFrac);
-            return {
-                display: display,
-                correctAnswer: correctFrac,
-                answerFormat: 'fraction',
-                options: options,
-                type: type,
-                steps: steps,
-                hint: hint,
-                isFraction: true
-            };
-        },
-
-        generateFractionOptions(correct) {
-            const candidates = [];
-            const shifts = [
-                { dn: 1, dd: 0 }, { dn: -1, dd: 0 }, { dn: 0, dd: 1 }, { dn: 0, dd: -1 },
-                { dn: 1, dd: 1 }, { dn: -1, dd: -1 }
-            ];
-            for (let s of shifts) {
-                let newNum = correct.num + s.dn;
-                let newDen = correct.den + s.dd;
-                if (newDen <= 0 || newNum === 0) continue;
-                let simp = simplify(newNum, newDen);
-                if (simp.num === correct.num && simp.den === correct.den) continue;
-                if (!candidates.some(c => c.num === simp.num && c.den === simp.den)) {
-                    candidates.push(simp);
-                }
-            }
-            while (candidates.length < 3) {
-                let n = randomInt(1, 10);
-                let d = randomInt(2, 10);
-                let s = simplify(n, d);
-                if (s.num === correct.num && s.den === correct.den) continue;
-                if (!candidates.some(c => c.num === s.num && c.den === s.den)) {
-                    candidates.push(s);
-                }
-            }
-            shuffle(candidates);
-            let options = candidates.slice(0, 3);
-            options.push(correct);
-            shuffle(options);
-            return options;
         }
     };
 
@@ -537,7 +400,6 @@
         totalExamTime: 0,
         examResults: [],
         questionStartTime: null,
-        selectedOptionIndex: null,
 
         init() {
             const savedName = localStorage.getItem('studentName');
@@ -576,15 +438,14 @@
         },
 
         bindUI() {
-            document.getElementById('checkBtn').addEventListener('click', () => this.checkInputAnswer());
+            document.getElementById('checkBtn').addEventListener('click', () => this.checkAnswer());
             document.getElementById('answerInput').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (!this.isAnswered) this.checkInputAnswer();
+                    if (!this.isAnswered) this.checkAnswer();
                     else this.nextQuestion();
                 }
             });
-            document.getElementById('checkOptionsBtn').addEventListener('click', () => this.checkOptionsAnswer());
             document.getElementById('nextBtn').addEventListener('click', () => this.nextQuestion());
             document.getElementById('hintBtn').addEventListener('click', () => this.showHint());
 
@@ -626,47 +487,15 @@
             this.currentQuestion = QuestionGenerator.generate();
             this.displayQuestion(this.currentQuestion);
             this.isAnswered = false;
-            this.selectedOptionIndex = null;
             document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
             document.getElementById('feedbackText').textContent = '';
             document.getElementById('stepsContainer').innerHTML = '';
             document.getElementById('hintContainer').style.display = 'none';
             document.getElementById('nextBtn').style.display = 'none';
-
-            // Сброс состояния поля ввода — важное исправление!
             document.getElementById('answerInput').disabled = false;
             document.getElementById('answerInput').value = '';
+            document.getElementById('answerInput').focus();
             document.getElementById('checkBtn').disabled = false;
-            document.getElementById('checkOptionsBtn').disabled = false;
-
-            if (this.currentQuestion.answerFormat === 'decimal') {
-                document.getElementById('inputBlock').style.display = 'flex';
-                document.getElementById('optionsBlock').style.display = 'none';
-                document.getElementById('answerInput').focus();
-            } else {
-                document.getElementById('inputBlock').style.display = 'none';
-                document.getElementById('optionsBlock').style.display = 'block';
-                const container = document.getElementById('optionsContainer');
-                container.innerHTML = '';
-                const letters = ['A', 'B', 'C', 'D'];
-                this.currentQuestion.options.forEach((opt, idx) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'option-btn';
-                    btn.dataset.index = idx;
-                    const letterSpan = document.createElement('span');
-                    letterSpan.className = 'letter';
-                    letterSpan.textContent = letters[idx];
-                    btn.appendChild(letterSpan);
-                    const textSpan = document.createElement('span');
-                    textSpan.textContent = fractionToString(opt.num, opt.den);
-                    btn.appendChild(textSpan);
-                    btn.addEventListener('click', () => this.selectOption(idx));
-                    container.appendChild(btn);
-                });
-                document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
-                    btn.classList.remove('selected', 'correct', 'wrong', 'reveal-correct', 'disabled');
-                });
-            }
 
             this.questionStartTime = Date.now();
             document.getElementById('timeSpent').textContent = '';
@@ -690,16 +519,7 @@
             document.getElementById('questionDisplay').textContent = q.display;
         },
 
-        selectOption(index) {
-            if (this.isAnswered) return;
-            const btns = document.querySelectorAll('#optionsContainer .option-btn');
-            btns.forEach((btn, i) => {
-                btn.classList.toggle('selected', i === index);
-            });
-            this.selectedOptionIndex = index;
-        },
-
-        checkInputAnswer() {
+        checkAnswer() {
             if (this.isAnswered) return;
             const input = document.getElementById('answerInput').value.trim();
             if (input === '') { alert('Введите ответ!'); return; }
@@ -736,52 +556,6 @@
             }
         },
 
-        checkOptionsAnswer() {
-            if (this.isAnswered || this.selectedOptionIndex === null) return;
-            const btns = document.querySelectorAll('#optionsContainer .option-btn');
-            const selectedOpt = this.currentQuestion.options[this.selectedOptionIndex];
-            const correct = this.currentQuestion.correctAnswer;
-            const isCorrect = (selectedOpt.num === correct.num && selectedOpt.den === correct.den);
-
-            const timeSpent = this.questionStartTime ? Math.round((Date.now() - this.questionStartTime) / 1000) : 0;
-            document.getElementById('timeSpent').textContent = `⏱ Время: ${timeSpent} с`;
-
-            if (this.mode === 'exam') {
-                this.examResults[this.examIndex] = {
-                    question: this.currentQuestion,
-                    userAnswer: selectedOpt,
-                    correct: isCorrect,
-                    timeSpent: timeSpent
-                };
-                if (isCorrect) this.examCorrect++;
-            }
-
-            const stats = Stats.addResult(isCorrect, timeSpent, this.currentQuestion.type);
-            this.updateStreak(isCorrect);
-
-            btns.forEach((btn, i) => {
-                btn.classList.add('disabled');
-                const opt = this.currentQuestion.options[i];
-                const isCorrectOpt = (opt.num === correct.num && opt.den === correct.den);
-                if (isCorrectOpt) {
-                    btn.classList.add('reveal-correct');
-                }
-                if (i === this.selectedOptionIndex) {
-                    btn.classList.add(isCorrect ? 'correct' : 'wrong');
-                }
-            });
-
-            this.showFeedback(isCorrect, fractionToString(correct.num, correct.den));
-            this.isAnswered = true;
-            document.getElementById('checkOptionsBtn').disabled = true;
-            document.getElementById('nextBtn').style.display = 'inline-block';
-            if (this.mode === 'exam' && this.examIndex === this.examQuestions.length - 1) {
-                document.getElementById('nextBtn').textContent = '📊 Завершить экзамен';
-            } else {
-                document.getElementById('nextBtn').textContent = '➡️ Следующее';
-            }
-        },
-
         showFeedback(isCorrect, correctStr) {
             const feedback = document.getElementById('feedback');
             const feedbackText = document.getElementById('feedbackText');
@@ -801,9 +575,7 @@
                 }
                 this.currentQuestion = this.examQuestions[this.examIndex];
                 this.displayQuestion(this.currentQuestion);
-                // Сброс состояния для следующего вопроса
                 this.isAnswered = false;
-                this.selectedOptionIndex = null;
                 document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
                 document.getElementById('feedbackText').textContent = '';
                 document.getElementById('stepsContainer').innerHTML = '';
@@ -811,43 +583,14 @@
                 document.getElementById('nextBtn').style.display = 'none';
                 document.getElementById('answerInput').disabled = false;
                 document.getElementById('answerInput').value = '';
+                document.getElementById('answerInput').focus();
                 document.getElementById('checkBtn').disabled = false;
-                document.getElementById('checkOptionsBtn').disabled = false;
-                document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
-                    btn.classList.remove('selected', 'correct', 'wrong', 'reveal-correct', 'disabled');
-                });
                 const prog = document.getElementById('examProgress');
                 prog.textContent = `Вопрос ${this.examIndex + 1} из ${this.examQuestions.length}`;
                 document.getElementById('timeSpent').textContent = '';
                 this.questionStartTime = Date.now();
                 document.getElementById('taskCard').classList.remove('fade-in');
                 setTimeout(() => document.getElementById('taskCard').classList.add('fade-in'), 10);
-
-                if (this.currentQuestion.answerFormat === 'decimal') {
-                    document.getElementById('inputBlock').style.display = 'flex';
-                    document.getElementById('optionsBlock').style.display = 'none';
-                    document.getElementById('answerInput').focus();
-                } else {
-                    document.getElementById('inputBlock').style.display = 'none';
-                    document.getElementById('optionsBlock').style.display = 'block';
-                    const container = document.getElementById('optionsContainer');
-                    container.innerHTML = '';
-                    const letters = ['A', 'B', 'C', 'D'];
-                    this.currentQuestion.options.forEach((opt, idx) => {
-                        const btn = document.createElement('button');
-                        btn.className = 'option-btn';
-                        btn.dataset.index = idx;
-                        const letterSpan = document.createElement('span');
-                        letterSpan.className = 'letter';
-                        letterSpan.textContent = letters[idx];
-                        btn.appendChild(letterSpan);
-                        const textSpan = document.createElement('span');
-                        textSpan.textContent = fractionToString(opt.num, opt.den);
-                        btn.appendChild(textSpan);
-                        btn.addEventListener('click', () => this.selectOption(idx));
-                        container.appendChild(btn);
-                    });
-                }
             } else {
                 this.newQuestion();
             }
@@ -875,7 +618,6 @@
             this.currentQuestion = this.examQuestions[0];
             this.displayQuestion(this.currentQuestion);
             this.isAnswered = false;
-            this.selectedOptionIndex = null;
             document.getElementById('feedback').classList.remove('show', 'correct', 'wrong');
             document.getElementById('feedbackText').textContent = '';
             document.getElementById('stepsContainer').innerHTML = '';
@@ -883,11 +625,8 @@
             document.getElementById('nextBtn').style.display = 'none';
             document.getElementById('answerInput').disabled = false;
             document.getElementById('answerInput').value = '';
+            document.getElementById('answerInput').focus();
             document.getElementById('checkBtn').disabled = false;
-            document.getElementById('checkOptionsBtn').disabled = false;
-            document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
-                btn.classList.remove('selected', 'correct', 'wrong', 'reveal-correct', 'disabled');
-            });
             document.getElementById('examReport').classList.remove('show');
             document.getElementById('taskCard').style.display = 'block';
             const label = document.getElementById('difficultyLabel');
@@ -895,32 +634,6 @@
             label.textContent = 'Уровень ОГЭ';
             document.getElementById('timeSpent').textContent = '';
             this.questionStartTime = Date.now();
-
-            if (this.currentQuestion.answerFormat === 'decimal') {
-                document.getElementById('inputBlock').style.display = 'flex';
-                document.getElementById('optionsBlock').style.display = 'none';
-                document.getElementById('answerInput').focus();
-            } else {
-                document.getElementById('inputBlock').style.display = 'none';
-                document.getElementById('optionsBlock').style.display = 'block';
-                const container = document.getElementById('optionsContainer');
-                container.innerHTML = '';
-                const letters = ['A', 'B', 'C', 'D'];
-                this.currentQuestion.options.forEach((opt, idx) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'option-btn';
-                    btn.dataset.index = idx;
-                    const letterSpan = document.createElement('span');
-                    letterSpan.className = 'letter';
-                    letterSpan.textContent = letters[idx];
-                    btn.appendChild(letterSpan);
-                    const textSpan = document.createElement('span');
-                    textSpan.textContent = fractionToString(opt.num, opt.den);
-                    btn.appendChild(textSpan);
-                    btn.addEventListener('click', () => this.selectOption(idx));
-                    container.appendChild(btn);
-                });
-            }
             document.getElementById('taskCard').classList.remove('fade-in');
             setTimeout(() => document.getElementById('taskCard').classList.add('fade-in'), 10);
         },
@@ -946,14 +659,8 @@
                 <tbody>`;
             this.examResults.forEach((res, idx) => {
                 const q = res.question;
-                let userAnsStr, correctAnsStr;
-                if (q.answerFormat === 'decimal') {
-                    userAnsStr = res.userAnswer !== null ? formatNumber(res.userAnswer) : '—';
-                    correctAnsStr = formatNumber(q.correctAnswer);
-                } else {
-                    userAnsStr = res.userAnswer ? fractionToString(res.userAnswer.num, res.userAnswer.den) : '—';
-                    correctAnsStr = fractionToString(q.correctAnswer.num, q.correctAnswer.den);
-                }
+                const userAns = res.userAnswer !== null ? formatNumber(res.userAnswer) : '—';
+                const correctAns = formatNumber(q.correctAnswer);
                 const isCorrect = res.correct;
                 const statusClass = isCorrect ? 'status-correct' : 'status-wrong';
                 const statusText = isCorrect ? '✅ Верно' : '❌ Ошибка';
@@ -965,8 +672,8 @@
                     <td>${idx+1}</td>
                     <td>${q.display}</td>
                     <td><span class="badge-oge">${q.type}</span></td>
-                    <td>${userAnsStr}</td>
-                    <td>${correctAnsStr}</td>
+                    <td>${userAns}</td>
+                    <td>${correctAns}</td>
                     <td class="${statusClass}">${statusText}</td>
                     <td>${time}</td>
                     <td>
@@ -1039,17 +746,11 @@
             text += `Подробности:\n`;
             this.examResults.forEach((res, idx) => {
                 const q = res.question;
-                let userAnsStr, correctAnsStr;
-                if (q.answerFormat === 'decimal') {
-                    userAnsStr = res.userAnswer !== null ? formatNumber(res.userAnswer) : '—';
-                    correctAnsStr = formatNumber(q.correctAnswer);
-                } else {
-                    userAnsStr = res.userAnswer ? fractionToString(res.userAnswer.num, res.userAnswer.den) : '—';
-                    correctAnsStr = fractionToString(q.correctAnswer.num, q.correctAnswer.den);
-                }
+                const userAns = res.userAnswer !== null ? formatNumber(res.userAnswer) : '—';
+                const correctAns = formatNumber(q.correctAnswer);
                 const status = res.correct ? '✅ Верно' : '❌ Ошибка';
                 const time = res.timeSpent !== null ? res.timeSpent + ' с' : '—';
-                text += `${idx+1}. ${q.display}  |  Тип: ${q.type}  |  Ваш ответ: ${userAnsStr}  |  Правильный: ${correctAnsStr}  |  ${status}  |  Время: ${time}\n`;
+                text += `${idx+1}. ${q.display}  |  Тип: ${q.type}  |  Ваш ответ: ${userAns}  |  Правильный: ${correctAns}  |  ${status}  |  Время: ${time}\n`;
             });
             text += `\nРекомендация: ${document.getElementById('examRecommendation').textContent.replace('💡 ', '')}`;
             return text;
